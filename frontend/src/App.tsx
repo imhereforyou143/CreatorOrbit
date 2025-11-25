@@ -8,6 +8,7 @@ import Signup from './pages/auth/Signup';
 import Explore from './pages/Explore';
 import CreatorProfile from './pages/CreatorProfile';
 import ContentView from './pages/ContentView';
+import OrbitStories from './pages/OrbitStories';
 import UserDashboard from './pages/dashboard/UserDashboard';
 import UserOverview from './pages/dashboard/user/Overview';
 import UserSubscriptions from './pages/dashboard/user/Subscriptions';
@@ -35,6 +36,7 @@ function App() {
           <Route path="/explore" element={<Layout><Explore /></Layout>} />
           <Route path="/creator/:handle" element={<Layout><CreatorProfile /></Layout>} />
           <Route path="/content/:id" element={<Layout><ContentView /></Layout>} />
+          <Route path="/stories" element={<Layout><OrbitStories /></Layout>} />
           <Route path="/creator/onboard" element={<ProtectedRoute><Layout><CreatorOnboard /></Layout></ProtectedRoute>} />
           
           {/* User Dashboard Routes */}

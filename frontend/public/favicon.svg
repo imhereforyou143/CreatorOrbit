@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="orbitGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff6ec4"/>
+      <stop offset="50%" stop-color="#834dff"/>
+      <stop offset="100%" stop-color="#46c8ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="130" fill="#050814"/>
+  <circle cx="256" cy="256" r="160" stroke="url(#orbitGradient)" stroke-width="30" opacity="0.5"/>
+  <circle cx="256" cy="256" r="110" fill="url(#orbitGradient)" opacity="0.8"/>
+  <circle cx="175" cy="210" r="26" fill="white" opacity="0.8"/>
+  <circle cx="330" cy="300" r="18" fill="#ffefc7"/>
+  <path d="M150 350 C220 390 300 390 360 330" stroke="white" stroke-width="12" stroke-linecap="round" opacity="0.35"/>
+</svg>
+

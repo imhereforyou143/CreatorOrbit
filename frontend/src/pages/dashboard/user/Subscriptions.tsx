@@ -1,16 +1,28 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useContract } from '../../../hooks/useContract';
-import { useWallet } from '../../../hooks/useWallet';
 import { Args } from '@massalabs/massa-web3';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { useContract } from '../../../hooks/useContract';
+import { useWallet } from '../../../hooks/useWallet';
+import { parseCreator, parseSubscription } from '../../../utils/massa';
+import { getUserSubscriptions, removeUserSubscription } from '../../../utils/localState';
+
+type SubscriptionRow = {
+  id: bigint;
+  creator: string;
+  handle: string;
+  creatorAddress: string;
+  tierLabel: string;
+  tierId: bigint;
+  nextBilling: number;
+};
 
 export default function UserSubscriptions() {
   const { address } = useWallet();
   const { readContract, callContract } = useContract();
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,27 +32,56 @@ export default function UserSubscriptions() {
   }, [address]);
 
   const loadSubscriptions = async () => {
+    if (!address) return;
     setLoading(true);
-    // Mock data for now
-    setSubscriptions([
-      {
-        id: 0,
-        creator: 'Tech Guru',
-        creatorAddress: 'AS123...',
-        tier: 'Supporter',
-        tierId: 0,
-        nextBilling: Date.now() + 20 * 24 * 60 * 60 * 1000,
-        isActive: true,
-      },
-    ]);
-    setLoading(false);
+
+    try {
+      const handles = getUserSubscriptions(address);
+      const rows: SubscriptionRow[] = [];
+
+      for (const handle of handles) {
+        try {
+          const creatorArgs = new Args();
+          creatorArgs.addString(handle);
+          const creatorBytes = await readContract('getCreator', creatorArgs);
+          if (!creatorBytes) continue;
+          const creator = parseCreator(creatorBytes);
+
+          const subArgs = new Args();
+          subArgs.addString(address);
+          subArgs.addString(creator.address);
+          const subBytes = await readContract('getSubscription', subArgs);
+          if (!subBytes) continue;
+
+          const subscription = parseSubscription(subBytes);
+          rows.push({
+            id: subscription.id,
+            creator: creator.name,
+            handle: creator.handle,
+            creatorAddress: creator.address,
+            tierLabel: `Tier #${subscription.tierId}`,
+            tierId: subscription.tierId,
+            nextBilling: subscription.nextPaymentTime,
+          });
+        } catch (err) {
+          console.warn('Failed to hydrate subscription', handle, err);
+        }
+      }
+
+      setSubscriptions(rows);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCancel = async (creatorAddress: string) => {
+  const handleCancel = async (creatorAddress: string, handle: string) => {
     try {
       const args = new Args();
       args.addString(creatorAddress);
       await callContract('cancelSubscription', args);
+      if (address) {
+        removeUserSubscription(address, handle);
+      }
       toast.success('Subscription cancelled');
       loadSubscriptions();
     } catch (error) {
@@ -78,11 +119,11 @@ export default function UserSubscriptions() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-2">{sub.creator}</h3>
+                    <h3 className="text-xl font-bold mb-2">{sub.creator}</h3>
                   <div className="flex items-center space-x-4 text-sm text-white/70">
                     <div className="flex items-center space-x-2">
                       <CreditCard className="w-4 h-4" />
-                      <span>{sub.tier} Tier</span>
+                        <span>{sub.tierLabel}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4" />
@@ -93,7 +134,7 @@ export default function UserSubscriptions() {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleCancel(sub.creatorAddress)}
+                  onClick={() => handleCancel(sub.creatorAddress, sub.handle)}
                   className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 rounded-lg transition flex items-center space-x-2 text-red-400"
                 >
                   <X className="w-4 h-4" />

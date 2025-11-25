@@ -1,16 +1,38 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Clock, CreditCard, TrendingUp } from 'lucide-react';
+import { Sparkles, Clock, CreditCard, TrendingUp, Rss } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useWallet } from '../../../hooks/useWallet';
-import { useContract } from '../../../hooks/useContract';
 import { Args } from '@massalabs/massa-web3';
 import { formatDistanceToNow } from 'date-fns';
+import { useWallet } from '../../../hooks/useWallet';
+import { useContract } from '../../../hooks/useContract';
+import {
+  formatMassa,
+  parseContentList,
+  parseCreator,
+  parseSubscription,
+  parseUser,
+} from '../../../utils/massa';
+import { getUserSubscriptions } from '../../../utils/localState';
+
+type SubscriptionCard = {
+  creator: string;
+  handle: string;
+  tierLabel: string;
+  nextBilling: number;
+  amount: bigint;
+};
 
 export default function UserOverview() {
   const { address } = useWallet();
   const { readContract } = useContract();
-  const [trialInfo, setTrialInfo] = useState<any>(null);
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [trialInfo, setTrialInfo] = useState<{ inTrial: boolean; trialEnd: number }>({
+    inTrial: false,
+    trialEnd: 0,
+  });
+  const [subscriptions, setSubscriptions] = useState<SubscriptionCard[]>([]);
+  const [recentDrops, setRecentDrops] = useState<
+    { title: string; creator: string; cid: string; createdAt: number }[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,26 +44,67 @@ export default function UserOverview() {
   const loadUserData = async () => {
     setLoading(true);
     try {
-      // Check trial status
-      if (address) {
-        const trialArgs = new Args();
-        trialArgs.addString(address);
-        const trialData = await readContract('isInTrial', trialArgs);
-        // Deserialize and set trial info
+      if (!address) return;
+
+      const userArgs = new Args();
+      userArgs.addString(address);
+      const userBytes = await readContract('getUser', userArgs);
+
+      if (userBytes) {
+        const decodedUser = parseUser(userBytes);
         setTrialInfo({
-          inTrial: true,
-          trialEnd: Date.now() + 3 * 24 * 60 * 60 * 1000, // Mock: 3 days remaining
+          inTrial: decodedUser.isNew && Date.now() < decodedUser.trialEndTimestamp,
+          trialEnd: decodedUser.trialEndTimestamp,
         });
       }
 
-      // Load subscriptions (mock for now)
-      setSubscriptions([
-        {
-          creator: 'Tech Guru',
-          tier: 'Supporter',
-          nextBilling: Date.now() + 20 * 24 * 60 * 60 * 1000,
-        },
-      ]);
+      const handles = getUserSubscriptions(address);
+      const subscriptionsData: SubscriptionCard[] = [];
+      const drops: { title: string; creator: string; cid: string; createdAt: number }[] = [];
+
+      for (const handle of handles) {
+        try {
+          const creatorArgs = new Args();
+          creatorArgs.addString(handle);
+          const creatorBytes = await readContract('getCreator', creatorArgs);
+          if (!creatorBytes) continue;
+          const creator = parseCreator(creatorBytes);
+
+          const subArgs = new Args();
+          subArgs.addString(address);
+          subArgs.addString(creator.address);
+          const subBytes = await readContract('getSubscription', subArgs);
+          if (!subBytes) continue;
+
+          const subscription = parseSubscription(subBytes);
+          subscriptionsData.push({
+            creator: creator.name,
+            handle: creator.handle,
+            tierLabel: `Tier #${subscription.tierId}`,
+            nextBilling: subscription.nextPaymentTime,
+            amount: subscription.totalPaid,
+          });
+
+          const contentArgs = new Args();
+          contentArgs.addString(creator.address);
+          const contentBytes = await readContract('getCreatorContent', contentArgs);
+          const contentList = parseContentList(contentBytes);
+          if (contentList.length > 0) {
+            const latest = contentList[0];
+            drops.push({
+              title: latest.title,
+              creator: creator.name,
+              cid: latest.contentCID,
+              createdAt: Number(latest.createdAt),
+            });
+          }
+        } catch (err) {
+          console.warn('Unable to hydrate subscription for', handle, err);
+        }
+      }
+
+      setSubscriptions(subscriptionsData);
+      setRecentDrops(drops.slice(0, 3));
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -57,8 +120,8 @@ export default function UserOverview() {
     );
   }
 
-  const trialDaysRemaining = trialInfo?.inTrial
-    ? Math.ceil((trialInfo.trialEnd - Date.now()) / (24 * 60 * 60 * 1000))
+  const trialDaysRemaining = trialInfo.inTrial
+    ? Math.max(0, Math.ceil((trialInfo.trialEnd - Date.now()) / (24 * 60 * 60 * 1000)))
     : 0;
 
   return (
@@ -108,7 +171,10 @@ export default function UserOverview() {
         >
           <TrendingUp className="w-8 h-8 text-purple-400 mb-4" />
           <div className="text-3xl font-bold mb-2">
-            {subscriptions.reduce((sum, sub) => sum + 5, 0)}
+            {formatMassa(
+              subscriptions.reduce((sum, sub) => sum + sub.amount, BigInt(0)),
+              2,
+            )}
           </div>
           <div className="text-white/70">Total Spent (MASSA)</div>
         </motion.div>
@@ -149,7 +215,7 @@ export default function UserOverview() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xl font-bold">{sub.creator}</h3>
-                    <p className="text-white/70">{sub.tier} Tier</p>
+                    <p className="text-white/70">{sub.tierLabel}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-white/60">Next billing</p>
@@ -159,6 +225,30 @@ export default function UserOverview() {
                   </div>
                 </div>
               </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <Rss className="w-5 h-5 text-pink-300" /> Latest Drops from Your Creators
+        </h2>
+        {recentDrops.length === 0 ? (
+          <div className="glass p-10 rounded-2xl text-center text-white/60">
+            Subscribe to your first creator to see their drops right here.
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-4">
+            {recentDrops.map((drop) => (
+              <div key={`${drop.cid}-${drop.createdAt}`} className="glass p-5 rounded-2xl space-y-2">
+                <p className="text-sm uppercase tracking-widest text-white/40">New drop</p>
+                <p className="text-lg font-semibold">{drop.title}</p>
+                <p className="text-white/60 text-sm">by {drop.creator}</p>
+                <p className="text-xs text-white/50">
+                  {formatDistanceToNow(new Date(drop.createdAt), { addSuffix: true })}
+                </p>
+              </div>
             ))}
           </div>
         )}

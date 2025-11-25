@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useWallet } from '../hooks/useWallet';
-import { Menu, X, User, LogOut, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { Menu, X, User, LogOut, Star } from 'lucide-react';
+import { useWallet } from '../hooks/useWallet';
+import orbitLogo from '../assets/logo.svg';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,18 +19,21 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <nav className="glass border-b border-white/10 sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#080b1a] via-[#1b0f30] to-[#03030f]">
+      <nav className="backdrop-blur-xl bg-black/30 border-b border-white/5 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link to="/" className="flex items-center space-x-2">
-              <Sparkles className="w-8 h-8 text-purple-400" />
+              <img src={orbitLogo} alt="CreatorOrbit" className="w-8 h-8" />
               <span className="text-xl font-bold gradient-text">CreatorOrbit</span>
             </Link>
 
             <div className="hidden md:flex items-center space-x-6">
               <Link to="/explore" className="text-white/80 hover:text-white transition">
                 Explore
+              </Link>
+              <Link to="/stories" className="text-white/80 hover:text-white transition flex items-center gap-1">
+                <Star className="w-4 h-4 text-pink-300" /> Stories
               </Link>
               {connected && (
                 <>
@@ -91,6 +95,13 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Explore
+              </Link>
+              <Link
+                to="/stories"
+                className="block text-white/80 hover:text-white transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Stories
               </Link>
               {connected && (
                 <>

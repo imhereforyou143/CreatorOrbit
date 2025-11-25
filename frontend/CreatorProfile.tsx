@@ -31,6 +31,8 @@ import {
   removeUserSubscription,
 } from '../utils/localState';
 
+const visibilityLabels = ['Free Trial', 'Subscribers Only'];
+
 export default function CreatorProfile() {
   const { handle } = useParams();
   const { address, connected } = useWallet();
@@ -132,7 +134,7 @@ export default function CreatorProfile() {
       await callContract('subscribe', args, tier.pricePerMonth);
       addUserSubscription(address, creator.handle);
       addCreatorFollower(creator.address, address);
-      toast.success("Welcome to 's  tier!");
+      toast.success(Welcome to 's  tier!);
       setIsSubscribed(true);
       setLocalVersion((v) => v + 1);
     } catch (err) {
@@ -249,7 +251,7 @@ export default function CreatorProfile() {
                   disabled={isSubscribed}
                   className="w-full rounded-2xl bg-gradient-to-r from-pink-500 via-purple-500 to-sky-500 py-3 font-semibold disabled:opacity-60"
                 >
-                  {isSubscribed ? 'You are subscribed' : `Join ${tier.name}`}
+                  {isSubscribed ? 'You are subscribed' : Join }
                 </button>
               </div>
             ))}
@@ -280,7 +282,7 @@ export default function CreatorProfile() {
         ) : (
           <div className="grid md:grid-cols-2 gap-6">
             {freeContent.map((item) => (
-              <Link key={item.id.toString()} to={`/content/${item.id.toString()}`}>
+              <Link key={item.id.toString()} to={/content/}>
                 <motion.div whileHover={{ y: -6 }} className="glass-dark p-6 rounded-2xl border border-white/5">
                   <div className="flex items-center gap-2 text-green-300 text-sm mb-3">
                     <Unlock className="w-4 h-4" /> Free Trial
@@ -304,9 +306,7 @@ export default function CreatorProfile() {
             {premiumContent.map((item) => (
               <div key={item.id.toString()} className="relative">
                 <div
-                  className={`glass-dark p-6 rounded-2xl border border-white/5 ${
-                    isSubscribed ? 'card-hover' : 'opacity-70 backdrop-blur'
-                  }`}
+                  className={glass-dark p-6 rounded-2xl border border-white/5 }
                 >
                   <div className="flex items-center gap-2 text-yellow-300 text-sm mb-3">
                     <Lock className="w-4 h-4" /> Subscribers Only

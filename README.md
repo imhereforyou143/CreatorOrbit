@@ -58,6 +58,8 @@ CreatorOrbit/
 
 ## Getting Started
 
+> **Deployed Contract**: `AS1Q7xPV7EjGVLRw1JAeJo52JYUaJfhDgf7Yk4EMMZVT4k6F6jcZ` on Massa buildnet.
+
 ### Prerequisites
 
 - Node.js 18+
@@ -88,17 +90,17 @@ npm install
 ```bash
 # In frontend directory
 cp .env.example .env
-# Update VITE_CONTRACT_ADDRESS with your deployed contract address
+# Update VITE_CONTRACT_ADDRESS if you redeploy the contract
 ```
 
 ### Development
 
-1. **Build and deploy smart contracts**
+1. **Build and deploy smart contracts (already deployed once, reuse or redeploy)**
 ```bash
 cd contract
 npm run build
 npm run deploy
-# Copy the contract address and update frontend/.env
+# Copy the printed contract address (`AS...`) and update frontend/.env
 ```
 
 2. **Run frontend development server**
