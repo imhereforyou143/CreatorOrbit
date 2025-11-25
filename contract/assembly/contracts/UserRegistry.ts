@@ -1,5 +1,6 @@
 import { Context, generateEvent, Storage } from '@massalabs/massa-as-sdk';
-import { Args, stringToBytes, bytesToString } from '@massalabs/as-types';
+import { Args } from '@massalabs/as-types';
+import { storageKey, writeU64, readU64, writeBytes, readBytes, hasBytes } from './utils';
 
 // Storage keys
 const USER_PREFIX = 'user_';
@@ -126,7 +127,7 @@ export function registerUser(binaryArgs: StaticArray<u8>): void {
   const bio = args.nextString().expect('Bio is required');
 
   const userKey = USER_PREFIX + address;
-  assert(!Storage.has(userKey), 'User already exists');
+  assert(!hasBytes(userKey), 'User already exists');
 
   const now = Context.timestamp();
   const trialEnd = now + (7 * 24 * 60 * 60 * 1000); // 7 days in milliseconds
@@ -141,14 +142,11 @@ export function registerUser(binaryArgs: StaticArray<u8>): void {
     bio
   );
 
-  Storage.set(userKey, user.serialize());
-  
+  writeBytes(userKey, user.serialize());
+
   // Increment user count
-  const count = Storage.has(USER_COUNT_KEY) 
-    ? Storage.get(USER_COUNT_KEY) 
-    : stringToBytes('0');
-  const countNum = parseInt(bytesToString(count));
-  Storage.set(USER_COUNT_KEY, stringToBytes((countNum + 1).toString()));
+  const countNum = readU64(USER_COUNT_KEY);
+  writeU64(USER_COUNT_KEY, countNum + 1);
 
   generateEvent(`User registered: ${address}`);
 }
@@ -168,7 +166,7 @@ export function registerCreator(binaryArgs: StaticArray<u8>): void {
 
   // Check if user exists
   const userKey = USER_PREFIX + address;
-  assert(Storage.has(userKey), 'User must be registered first');
+  assert(hasBytes(userKey), 'User must be registered first');
 
   // Check if handle is already taken
   const handleKey = 'handle_' + handle;
@@ -178,7 +176,7 @@ export function registerCreator(binaryArgs: StaticArray<u8>): void {
   const userData = Storage.get(userKey);
   const user = User.deserialize(userData);
   user.isCreator = true;
-  Storage.set(userKey, user.serialize());
+  writeBytes(userKey, user.serialize());
 
   // Create creator profile
   const creator = new CreatorProfile(
@@ -192,15 +190,12 @@ export function registerCreator(binaryArgs: StaticArray<u8>): void {
   );
 
   const creatorKey = CREATOR_PREFIX + address;
-  Storage.set(creatorKey, creator.serialize());
-  Storage.set(handleKey, stringToBytes(address)); // Map handle to address
+  writeBytes(creatorKey, creator.serialize());
+  Storage.set<string>(handleKey, address); // Map handle to address
 
   // Increment creator count
-  const count = Storage.has(CREATOR_COUNT_KEY)
-    ? Storage.get(CREATOR_COUNT_KEY)
-    : stringToBytes('0');
-  const countNum = parseInt(bytesToString(count));
-  Storage.set(CREATOR_COUNT_KEY, stringToBytes((countNum + 1).toString()));
+  const countNum = readU64(CREATOR_COUNT_KEY);
+  writeU64(CREATOR_COUNT_KEY, countNum + 1);
 
   generateEvent(`Creator registered: ${address} with handle ${handle}`);
 }
@@ -214,9 +209,9 @@ export function getUser(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const address = args.nextString().expect('Address is required');
   
   const userKey = USER_PREFIX + address;
-  assert(Storage.has(userKey), 'User not found');
+  assert(hasBytes(userKey), 'User not found');
   
-  return Storage.get(userKey);
+  return readBytes(userKey);
 }
 
 /**
@@ -231,14 +226,14 @@ export function getCreator(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   
   // If it's a handle, resolve to address
   const handleKey = 'handle_' + identifier;
-  if (Storage.has(handleKey)) {
-    address = bytesToString(Storage.get(handleKey));
+  if (Storage.has<string>(handleKey)) {
+    address = Storage.get<string>(handleKey);
   }
   
   const creatorKey = CREATOR_PREFIX + address;
-  assert(Storage.has(creatorKey), 'Creator not found');
+  assert(hasBytes(creatorKey), 'Creator not found');
   
-  return Storage.get(creatorKey);
+  return readBytes(creatorKey);
 }
 
 /**
@@ -250,9 +245,9 @@ export function isInTrial(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const address = args.nextString().expect('Address is required');
   
   const userKey = USER_PREFIX + address;
-  assert(Storage.has(userKey), 'User not found');
+  assert(hasBytes(userKey), 'User not found');
   
-  const userData = Storage.get(userKey);
+  const userData = readBytes(userKey);
   const user = User.deserialize(userData);
   const now = Context.timestamp();
   
@@ -275,15 +270,15 @@ export function updateUserProfile(binaryArgs: StaticArray<u8>): void {
   assert(Context.caller().toString() === address, 'Unauthorized');
 
   const userKey = USER_PREFIX + address;
-  assert(Storage.has(userKey), 'User not found');
+  assert(hasBytes(userKey), 'User not found');
 
-  const userData = Storage.get(userKey);
+  const userData = readBytes(userKey);
   const user = User.deserialize(userData);
   user.username = username;
   user.bio = bio;
   user.isNew = false; // Mark as no longer new after first update
 
-  Storage.set(userKey, user.serialize());
+  writeBytes(userKey, user.serialize());
   generateEvent(`User profile updated: ${address}`);
 }
 

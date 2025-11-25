@@ -1,8 +1,13 @@
 import { Context, generateEvent, Storage } from '@massalabs/massa-as-sdk';
-import { Args, stringToBytes, bytesToString } from '@massalabs/as-types';
-
-// Import subscription manager functions
-import { isSubscribed } from './SubscriptionManager';
+import { Args } from '@massalabs/as-types';
+import {
+  storageKey,
+  writeU64,
+  readU64,
+  writeBytes,
+  readBytes,
+  hasBytes,
+} from './utils';
 
 // Storage keys
 const CONTENT_PREFIX = 'content_';

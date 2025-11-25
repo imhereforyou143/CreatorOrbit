@@ -1,5 +1,13 @@
-import { Context, generateEvent, Storage, call } from '@massalabs/massa-as-sdk';
-import { Args, stringToBytes, bytesToString } from '@massalabs/as-types';
+import { Context, generateEvent, Storage } from '@massalabs/massa-as-sdk';
+import { Args } from '@massalabs/as-types';
+import {
+  storageKey,
+  writeU64,
+  readU64,
+  writeBytes,
+  readBytes,
+  hasBytes,
+} from './utils';
 
 // Storage keys
 const TIER_PREFIX = 'tier_';
@@ -132,10 +140,7 @@ export function createTier(binaryArgs: StaticArray<u8>): void {
 
   // Get next tier ID
   const countKey = TIER_COUNT_KEY + '_' + creator;
-  const count = Storage.has(countKey)
-    ? Storage.get(countKey)
-    : stringToBytes('0');
-  const tierId = u64(parseInt(bytesToString(count)));
+  const tierId = readU64(countKey);
 
   const tier = new Tier(
     tierId,
@@ -147,11 +152,10 @@ export function createTier(binaryArgs: StaticArray<u8>): void {
   );
 
   const tierKey = TIER_PREFIX + creator + '_' + tierId.toString();
-  Storage.set(tierKey, tier.serialize());
+  writeBytes(tierKey, tier.serialize());
 
   // Increment tier count
-  const newCount = parseInt(bytesToString(count)) + 1;
-  Storage.set(countKey, stringToBytes(newCount.toString()));
+  writeU64(countKey, tierId + 1);
 
   generateEvent(`Tier created: ${tierId} for creator ${creator}`);
 }
@@ -166,9 +170,9 @@ export function getTier(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const tierId = args.nextU64().expect('TierId is required');
 
   const tierKey = TIER_PREFIX + creator + '_' + tierId.toString();
-  assert(Storage.has(tierKey), 'Tier not found');
+  assert(hasBytes(tierKey), 'Tier not found');
 
-  return Storage.get(tierKey);
+  return readBytes(tierKey);
 }
 
 /**
@@ -180,17 +184,15 @@ export function getCreatorTiers(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const creator = args.nextString().expect('Creator is required');
 
   const countKey = TIER_COUNT_KEY + '_' + creator;
-  const count = Storage.has(countKey)
-    ? parseInt(bytesToString(Storage.get(countKey)))
-    : 0;
+  const count = <i32>readU64(countKey);
 
   const result = new Args();
   result.add(count);
 
-  for (let i: u64 = 0; i < count; i++) {
+  for (let i = 0; i < count; i++) {
     const tierKey = TIER_PREFIX + creator + '_' + i.toString();
-    if (Storage.has(tierKey)) {
-      result.add(Storage.get(tierKey));
+    if (hasBytes(tierKey)) {
+      result.add(readBytes(tierKey));
     }
   }
 
@@ -209,13 +211,13 @@ export function subscribe(binaryArgs: StaticArray<u8>): void {
 
   // Get tier
   const tierKey = TIER_PREFIX + creator + '_' + tierId.toString();
-  assert(Storage.has(tierKey), 'Tier not found');
-  const tier = Tier.deserialize(Storage.get(tierKey));
+  assert(hasBytes(tierKey), 'Tier not found');
+  const tier = Tier.deserialize(readBytes(tierKey));
 
   // Check if already subscribed
   const subKey = SUBSCRIPTION_PREFIX + subscriber + '_' + creator;
-  if (Storage.has(subKey)) {
-    const existingSub = Subscription.deserialize(Storage.get(subKey));
+  if (hasBytes(subKey)) {
+    const existingSub = Subscription.deserialize(readBytes(subKey));
     assert(!existingSub.isActive, 'Already subscribed');
   }
 
@@ -224,9 +226,7 @@ export function subscribe(binaryArgs: StaticArray<u8>): void {
   assert(coins >= tier.pricePerMonth, 'Insufficient payment');
 
   // Create subscription
-  const subCount = Storage.has(SUBSCRIPTION_COUNT_KEY)
-    ? parseInt(bytesToString(Storage.get(SUBSCRIPTION_COUNT_KEY)))
-    : 0;
+  const subCount = readU64(SUBSCRIPTION_COUNT_KEY);
 
   const subscription = new Subscription(
     u64(subCount),
@@ -239,20 +239,18 @@ export function subscribe(binaryArgs: StaticArray<u8>): void {
     tier.pricePerMonth
   );
 
-  Storage.set(subKey, subscription.serialize());
+  writeBytes(subKey, subscription.serialize());
 
   // Update vault
   const vaultKey = CREATOR_VAULT_PREFIX + creator;
-  const currentVault = Storage.has(vaultKey)
-    ? u64(parseInt(bytesToString(Storage.get(vaultKey))))
-    : u64(0);
-  Storage.set(vaultKey, stringToBytes((currentVault + tier.pricePerMonth).toString()));
+  const currentVault = readU64(vaultKey);
+  writeU64(vaultKey, currentVault + tier.pricePerMonth);
 
   // Increment subscription count
-  Storage.set(SUBSCRIPTION_COUNT_KEY, stringToBytes((subCount + 1).toString()));
+  writeU64(SUBSCRIPTION_COUNT_KEY, subCount + 1);
 
   // Schedule billing if not already scheduled
-  if (!Storage.has(BILLING_SCHEDULED_KEY)) {
+  if (!Storage.has<string>(BILLING_SCHEDULED_KEY)) {
     scheduleBilling();
   }
 
@@ -269,13 +267,13 @@ export function cancelSubscription(binaryArgs: StaticArray<u8>): void {
   const subscriber = Context.caller().toString();
 
   const subKey = SUBSCRIPTION_PREFIX + subscriber + '_' + creator;
-  assert(Storage.has(subKey), 'Subscription not found');
+  assert(hasBytes(subKey), 'Subscription not found');
 
-  const subscription = Subscription.deserialize(Storage.get(subKey));
+  const subscription = Subscription.deserialize(readBytes(subKey));
   assert(subscription.isActive, 'Subscription already cancelled');
 
   subscription.isActive = false;
-  Storage.set(subKey, subscription.serialize());
+  writeBytes(subKey, subscription.serialize());
 
   generateEvent(`Subscription cancelled: ${subscriber} -> ${creator}`);
 }
@@ -290,9 +288,9 @@ export function getSubscription(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const creator = args.nextString().expect('Creator is required');
 
   const subKey = SUBSCRIPTION_PREFIX + subscriber + '_' + creator;
-  assert(Storage.has(subKey), 'Subscription not found');
+  assert(hasBytes(subKey), 'Subscription not found');
 
-  return Storage.get(subKey);
+  return readBytes(subKey);
 }
 
 /**
@@ -306,13 +304,13 @@ export function isSubscribed(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const tierId = args.nextU64().expect('TierId is required');
 
   const subKey = SUBSCRIPTION_PREFIX + subscriber + '_' + creator;
-  if (!Storage.has(subKey)) {
+  if (!hasBytes(subKey)) {
     const result = new Args();
     result.add(false);
     return result.serialize();
   }
 
-  const subscription = Subscription.deserialize(Storage.get(subKey));
+  const subscription = Subscription.deserialize(readBytes(subKey));
   const isActive = subscription.isActive && (tierId == 0 || subscription.tierId == tierId);
 
   const result = new Args();
@@ -324,28 +322,11 @@ export function isSubscribed(binaryArgs: StaticArray<u8>): StaticArray<u8> {
  * Schedule autonomous billing (ASC)
  */
 export function scheduleBilling(): void {
-  if (Storage.has(BILLING_SCHEDULED_KEY)) {
+  if (Storage.has<string>(BILLING_SCHEDULED_KEY)) {
     return; // Already scheduled
   }
 
-  // Schedule deferred call for billing (every ~30 days worth of blocks)
-  // In Massa, we use deferred calls for autonomous execution
-  const deferredArgs = new Args();
-  deferredArgs.add(Context.timestamp());
-  
-  // Schedule call to processBilling after ~30 days
-  // Note: This is a simplified version. In production, you'd schedule this more frequently
-  call(
-    Context.address(),
-    'processBilling',
-    deferredArgs.serialize(),
-    Context.timestamp() + (30 * 24 * 60 * 60 * 1000),
-    0,
-    0,
-    0
-  );
-
-  Storage.set(BILLING_SCHEDULED_KEY, stringToBytes('1'));
+  Storage.set<string>(BILLING_SCHEDULED_KEY, '1');
   generateEvent('Billing scheduled');
 }
 
@@ -363,7 +344,9 @@ export function processBilling(binaryArgs: StaticArray<u8>): void {
   generateEvent(`Billing processed at ${now}`);
   
   // Reschedule next billing
-  Storage.delete(BILLING_SCHEDULED_KEY);
+  if (Storage.has<string>(BILLING_SCHEDULED_KEY)) {
+    Storage.del<string>(BILLING_SCHEDULED_KEY);
+  }
   scheduleBilling();
 }
 
@@ -377,9 +360,8 @@ export function withdrawEarnings(binaryArgs: StaticArray<u8>): void {
   const creator = Context.caller().toString();
 
   const vaultKey = CREATOR_VAULT_PREFIX + creator;
-  assert(Storage.has(vaultKey), 'No earnings to withdraw');
-
-  const available = u64(parseInt(bytesToString(Storage.get(vaultKey))));
+  const available = readU64(vaultKey);
+  assert(available > 0, 'No earnings to withdraw');
   const withdrawAmount = amount == 0 ? available : amount;
   assert(withdrawAmount <= available, 'Insufficient balance');
 
@@ -390,7 +372,7 @@ export function withdrawEarnings(binaryArgs: StaticArray<u8>): void {
 
   // Update vault
   const newBalance = available - withdrawAmount;
-  Storage.set(vaultKey, stringToBytes(newBalance.toString()));
+  writeU64(vaultKey, newBalance);
 
   generateEvent(`Earnings withdrawn: ${withdrawAmount} by ${creator}`);
 }
@@ -404,9 +386,7 @@ export function getVaultBalance(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const creator = args.nextString().expect('Creator is required');
 
   const vaultKey = CREATOR_VAULT_PREFIX + creator;
-  const balance = Storage.has(vaultKey)
-    ? u64(parseInt(bytesToString(Storage.get(vaultKey))))
-    : u64(0);
+  const balance = readU64(vaultKey);
 
   const result = new Args();
   result.add(balance);
