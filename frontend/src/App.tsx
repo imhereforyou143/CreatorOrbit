@@ -1,58 +1,75 @@
-import { bytesToStr, JsonRPCClient } from "@massalabs/massa-web3";
-import { useEffect, useState } from "react";
-import { MassaLogo } from "@massalabs/react-ui-kit";
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { WalletProvider } from '@massalabs/wallet-provider';
+import { Toaster } from 'react-hot-toast';
+import Layout from './components/Layout';
+import Landing from './pages/Landing';
+import Login from './pages/auth/Login';
+import Signup from './pages/auth/Signup';
+import Explore from './pages/Explore';
+import CreatorProfile from './pages/CreatorProfile';
+import ContentView from './pages/ContentView';
+import UserDashboard from './pages/dashboard/UserDashboard';
+import UserOverview from './pages/dashboard/user/Overview';
+import UserSubscriptions from './pages/dashboard/user/Subscriptions';
+import UserBilling from './pages/dashboard/user/Billing';
+import UserSettings from './pages/dashboard/user/Settings';
+import CreatorDashboard from './pages/dashboard/CreatorDashboard';
+import CreatorOverview from './pages/dashboard/creator/Overview';
+import CreatorContent from './pages/dashboard/creator/Content';
+import CreatorSubscribers from './pages/dashboard/creator/Subscribers';
+import CreatorTiers from './pages/dashboard/creator/Tiers';
+import CreatorPayouts from './pages/dashboard/creator/Payouts';
+import CreatorSettings from './pages/dashboard/creator/Settings';
+import CreatorOnboard from './pages/CreatorOnboard';
+import { useWallet } from './hooks/useWallet';
 
-const sc_addr = "AS121byc9dBwjbeREk4rzUZisFyfMkdZ1Uhtcnm6n6s5hnCX6fsHc"; // TODO Update with your deployed contract address
-
-/**
- * The key used to store the greeting in the smart contract
- */
-const GREETING_KEY = "greeting_key";
-
-/**
- * App component that handles interactions with a Massa smart contract
- * @returns The rendered component
- */
 function App() {
-
-  const [greeting, setGreeting] = useState<string | null>(null);
-
-  /**
- * Initialize the web3 client
- */
-  const client = JsonRPCClient.buildnet()
-
-  /**
-   * Fetch the greeting when the web3 client is initialized
-   */
-  useEffect(() => {
-    getGreeting();
-  });
-
-  /**
-   * Function to get the current greeting from the smart contract
-   */
-  async function getGreeting() {
-    if (client) {
-      const dataStoreVal = await client.getDatastoreEntry(GREETING_KEY, sc_addr, false)
-      const greetingDecoded = dataStoreVal ? bytesToStr(dataStoreVal) : null;
-      setGreeting(greetingDecoded);
-    }
-  }
-
   return (
-    <>
-      <div>
-        <MassaLogo className="logo" size={100} />
-        <h2>Greeting message:</h2>
-        <h1>{greeting}</h1>
-      </div>
-    </>
+    <WalletProvider>
+      <Router>
+        <Toaster position="top-right" />
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/auth/login" element={<Login />} />
+          <Route path="/auth/signup" element={<Signup />} />
+          <Route path="/explore" element={<Layout><Explore /></Layout>} />
+          <Route path="/creator/:handle" element={<Layout><CreatorProfile /></Layout>} />
+          <Route path="/content/:id" element={<Layout><ContentView /></Layout>} />
+          <Route path="/creator/onboard" element={<ProtectedRoute><Layout><CreatorOnboard /></Layout></ProtectedRoute>} />
+          
+          {/* User Dashboard Routes */}
+          <Route path="/dashboard/user" element={<ProtectedRoute><Layout><UserDashboard /></Layout></ProtectedRoute>}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<UserOverview />} />
+            <Route path="subscriptions" element={<UserSubscriptions />} />
+            <Route path="billing" element={<UserBilling />} />
+            <Route path="settings" element={<UserSettings />} />
+          </Route>
+          
+          {/* Creator Dashboard Routes */}
+          <Route path="/dashboard/creator" element={<ProtectedRoute><Layout><CreatorDashboard /></Layout></ProtectedRoute>}>
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={<CreatorOverview />} />
+            <Route path="content" element={<CreatorContent />} />
+            <Route path="subscribers" element={<CreatorSubscribers />} />
+            <Route path="tiers" element={<CreatorTiers />} />
+            <Route path="payouts" element={<CreatorPayouts />} />
+            <Route path="settings" element={<CreatorSettings />} />
+          </Route>
+        </Routes>
+      </Router>
+    </WalletProvider>
   );
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { connected } = useWallet();
+  
+  if (!connected) {
+    return <Navigate to="/auth/login" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
 export default App;
-
-
-
