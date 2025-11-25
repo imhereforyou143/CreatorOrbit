@@ -31,8 +31,8 @@ export default function CreatorContent() {
     
     try {
       const args = new Args();
-      args.add(address);
-      const contentData = await readContract('getCreatorContent', args);
+      args.addString(address);
+      await readContract('getCreatorContent', args);
       // Deserialize and set
       // Mock for now
       setContent([
@@ -56,13 +56,13 @@ export default function CreatorContent() {
     setLoading(true);
     try {
       const args = new Args();
-      args.add(address);
-      args.add(0); // tierIdRequired
-      args.add(formData.visibility);
-      args.add(formData.contentCID || 'QmSample');
-      args.add(formData.title);
-      args.add(formData.description);
-      args.add(formData.contentType);
+      args.addString(address);
+      args.addU64(0n); // tierIdRequired (0 = none)
+      args.addU8(BigInt(formData.visibility));
+      args.addString(formData.contentCID || 'QmSample');
+      args.addString(formData.title);
+      args.addString(formData.description);
+      args.addString(formData.contentType);
 
       await callContract('createContent', args);
       toast.success('Content created!');
@@ -88,7 +88,7 @@ export default function CreatorContent() {
 
     try {
       const args = new Args();
-      args.add(contentId);
+      args.addU64(BigInt(contentId));
       await callContract('deleteContent', args);
       toast.success('Content deleted');
       loadContent();

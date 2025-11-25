@@ -26,19 +26,26 @@ export default function CreatorOverview() {
     setLoading(true);
     try {
       // Load vault balance
+      let earningsOnChain = 0;
+
       if (address) {
         const vaultArgs = new Args();
-        vaultArgs.add(address);
+        vaultArgs.addString(address);
         const vaultData = await readContract('getVaultBalance', vaultArgs);
-        // Deserialize and set
+
+        if (vaultData) {
+          const decoded = new Args(vaultData);
+          const raw = decoded.nextU64();
+          earningsOnChain = Number(raw) / 1e9;
+        }
       }
 
-      // Mock stats for now
+      // Mock stats combined with live earnings
       setStats({
         subscribers: 42,
-        earnings: 1250,
+        earnings: earningsOnChain,
         content: 18,
-        monthlyRevenue: 350,
+        monthlyRevenue: earningsOnChain / 12,
       });
     } catch (error) {
       console.error('Error loading stats:', error);

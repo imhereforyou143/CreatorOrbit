@@ -11,7 +11,7 @@ export default function CreatorPayouts() {
   const { readContract, callContract } = useContract();
   const [vaultBalance, setVaultBalance] = useState(0);
   const [totalEarned, setTotalEarned] = useState(0);
-  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [withdrawals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [withdrawing, setWithdrawing] = useState(false);
 
@@ -26,12 +26,18 @@ export default function CreatorPayouts() {
     try {
       if (address) {
         const vaultArgs = new Args();
-        vaultArgs.add(address);
+        vaultArgs.addString(address);
         const vaultData = await readContract('getVaultBalance', vaultArgs);
-        // Deserialize and set
-        // Mock for now
-        setVaultBalance(1250);
-        setTotalEarned(3500);
+
+        if (vaultData) {
+          const decoded = new Args(vaultData);
+          const raw = decoded.nextU64();
+          const amount = Number(raw) / 1e9;
+          setVaultBalance(amount);
+          setTotalEarned((prev) => Math.max(prev, amount));
+        } else {
+          setVaultBalance(0);
+        }
       }
     } catch (error) {
       console.error('Error loading payout data:', error);
@@ -50,7 +56,7 @@ export default function CreatorPayouts() {
     setWithdrawing(true);
     try {
       const args = new Args();
-      args.add(0); // 0 = withdraw all
+      args.addU64(0n); // 0 = withdraw all
       await callContract('withdrawEarnings', args);
       toast.success('Earnings withdrawn!');
       loadPayoutData();

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Sparkles, Lock, Unlock, Calendar, Users } from 'lucide-react';
+import { Sparkles, Lock, Unlock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useContract } from '../hooks/useContract';
 import { useWallet } from '../hooks/useWallet';
@@ -43,7 +43,7 @@ export default function CreatorProfile() {
     try {
       // Load creator profile
       const creatorArgs = new Args();
-      creatorArgs.add(handle || '');
+      creatorArgs.addString(handle || '');
       const creatorData = await readContract('getCreator', creatorArgs);
       if (creatorData) {
         // Deserialize creator data
@@ -58,8 +58,8 @@ export default function CreatorProfile() {
 
       // Load tiers
       const tiersArgs = new Args();
-      tiersArgs.add(creator?.address || '');
-      const tiersData = await readContract('getCreatorTiers', tiersArgs);
+      tiersArgs.addString(creator?.address || '');
+      await readContract('getCreatorTiers', tiersArgs);
       // Deserialize and set tiers
       setTiers([
         { id: 0, name: 'Supporter', pricePerMonth: BigInt(5000000000), metadataURI: '' },
@@ -68,8 +68,8 @@ export default function CreatorProfile() {
 
       // Load content
       const contentArgs = new Args();
-      contentArgs.add(creator?.address || '');
-      const contentData = await readContract('getCreatorContent', contentArgs);
+      contentArgs.addString(creator?.address || '');
+      await readContract('getCreatorContent', contentArgs);
       // Deserialize and set content
       setContent([
         { id: 0, title: 'Free Tutorial', description: 'Learn the basics', visibility: 0, contentCID: 'Qm...' },
@@ -92,7 +92,9 @@ export default function CreatorProfile() {
       const args = new Args();
       args.addString(creator?.address || '');
       args.addU64(BigInt(tierId));
-      await callContract('subscribe', args);
+      const tier = tiers.find((t) => t.id === tierId);
+      const price = tier ? tier.pricePerMonth : BigInt(0);
+      await callContract('subscribe', args, price);
       toast.success('Subscribed successfully!');
       setSubscribed(true);
     } catch (error) {

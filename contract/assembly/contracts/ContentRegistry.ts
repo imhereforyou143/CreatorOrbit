@@ -273,8 +273,19 @@ export function deleteContent(binaryArgs: StaticArray<u8>): void {
   if (Storage.has<string>(creatorContentKey)) {
     const contentListStr = Storage.get<string>(creatorContentKey);
     const contentIds = contentListStr.split(',');
-    const newIds = contentIds.filter(id => id != contentId.toString());
-    Storage.set<string>(creatorContentKey, newIds.join(','));
+    const targetId = contentId.toString();
+    let rebuilt = '';
+
+    for (let i = 0; i < contentIds.length; i++) {
+      const current = contentIds[i];
+      if (current === '' || current === targetId) {
+        continue;
+      }
+
+      rebuilt = rebuilt === '' ? current : `${rebuilt},${current}`;
+    }
+
+    Storage.set<string>(creatorContentKey, rebuilt);
   }
 
   deleteBytes(contentKey);

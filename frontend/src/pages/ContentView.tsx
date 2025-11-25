@@ -5,12 +5,11 @@ import { motion } from 'framer-motion';
 import { useContract } from '../hooks/useContract';
 import { useWallet } from '../hooks/useWallet';
 import { Args } from '@massalabs/massa-web3';
-import toast from 'react-hot-toast';
 
 export default function ContentView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { address, connected } = useWallet();
+  const { address } = useWallet();
   const { readContract } = useContract();
   const [content, setContent] = useState<any>(null);
   const [canView, setCanView] = useState(false);
@@ -27,15 +26,15 @@ export default function ContentView() {
     try {
       // Load content
       const contentArgs = new Args();
-      contentArgs.add(parseInt(id || '0'));
-      const contentData = await readContract('getContent', contentArgs);
+      contentArgs.addU64(BigInt(parseInt(id || '0')));
+      await readContract('getContent', contentArgs);
       
       // Check access
       if (address) {
         const accessArgs = new Args();
-        accessArgs.add(address);
-        accessArgs.add(parseInt(id || '0'));
-        const accessData = await readContract('canViewContent', accessArgs);
+        accessArgs.addString(address);
+        accessArgs.addU64(BigInt(parseInt(id || '0')));
+        await readContract('canViewContent', accessArgs);
         // Deserialize access result
         setCanView(true); // Simplified
       }

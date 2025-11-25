@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, User } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useWallet } from '../../../hooks/useWallet';
 import { useContract } from '../../../hooks/useContract';
@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 export default function CreatorSettings() {
   const { address } = useWallet();
-  const { readContract, callContract } = useContract();
+  const { readContract } = useContract();
   const [formData, setFormData] = useState({
     name: '',
     handle: '',
@@ -29,17 +29,26 @@ export default function CreatorSettings() {
     
     try {
       const args = new Args();
-      args.add(address);
+      args.addString(address);
       const creatorData = await readContract('getCreator', args);
-      // Deserialize and set form data
-      // Mock for now
-      setFormData({
-        name: 'Tech Guru',
-        handle: 'techguru',
-        bio: 'Sharing the latest in tech',
-        category: 'tech',
-        metadataURI: '',
-      });
+      if (creatorData) {
+        const decoded = new Args(creatorData);
+        decoded.nextString(); // address
+        const name = decoded.nextString();
+        const handle = decoded.nextString();
+        const bio = decoded.nextString();
+        const category = decoded.nextString();
+        decoded.nextU64(); // createdAt
+        const metadataURI = decoded.nextString();
+
+        setFormData({
+          name,
+          handle,
+          bio,
+          category,
+          metadataURI,
+        });
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
     }

@@ -170,10 +170,10 @@ export function registerCreator(binaryArgs: StaticArray<u8>): void {
 
   // Check if handle is already taken
   const handleKey = 'handle_' + handle;
-  assert(!Storage.has(handleKey), 'Handle already taken');
+  assert(!Storage.has<string>(handleKey), 'Handle already taken');
 
   // Update user to creator
-  const userData = Storage.get(userKey);
+  const userData = readBytes(userKey);
   const user = User.deserialize(userData);
   user.isCreator = true;
   writeBytes(userKey, user.serialize());
