@@ -1,0 +1,513 @@
+🏷 App Name & Concept
+
+Name: CreatorOrbit
+Tagline: “Autonomous subscriptions for unstoppable creators.”
+
+Built on Massa
+
+Frontend deployed on DeWeb
+
+Subscriptions + trials powered by Autonomous Smart Contracts (ASC)
+
+No bots, no cron jobs, no backend server needed for billing
+
+👥 Roles in the App
+
+We’ll have 2 main roles:
+
+Viewer / Fan / Subscriber → “User”
+
+Creator (someone who uploads paid content)
+
+Same login, but different dashboards and routes.
+
+🧑‍💻 USER POV – How the app feels to a normal user
+1. Landing & Onboarding
+
+Routes:
+
+/ → Landing page
+
+/auth/login → Login
+
+/auth/signup → Signup
+
+Flow:
+
+User visits /
+
+Clicks “Connect Wallet” (Massa wallet / Bearby)
+
+Clicks “I’m here to watch content” → user mode
+
+On first signup:
+
+Smart contract creates a UserProfile
+
+Flags them as isNew = true
+
+Sets trialEnd = now + 7 days
+
+🆓 Trial logic for users:
+
+For the first 7 days, the user:
+
+Can access “Trial content” (free content from creators)
+
+No payment required
+
+After 7 days:
+
+Trial is over
+
+To see premium content, user must subscribe to creators
+
+2. Browsing & Viewing Content
+
+Routes:
+
+/explore → list of creators & content
+
+/creator/:handle → creator public page
+
+/content/:id → single content view
+
+User can:
+
+See a grid of creators
+
+Filter by category (tech, music, art, etc.)
+
+Click a creator → see:
+
+Bio
+
+Tiers
+
+3 free posts (trial content)
+
+Locked premium posts (blurred/locked)
+
+Free content rules:
+
+Each creator can mark up to 3 posts as isFreeTrial = true.
+
+Any user can:
+
+View those free posts always
+
+If within 7-day trial → may get extra perks (e.g. limited access to some premium previews)
+
+3. Subscribing to a Creator
+
+From /creator/:handle:
+
+User sees subscription tiers, example:
+
+Tier 1: Supporter – 5 MASSA / month
+
+Tier 2: Super Fan – 15 MASSA / month
+
+Clicks “Subscribe”
+
+Frontend calls smart contract:
+
+subscribe(creatorId, tierId)
+
+
+Contract stores:
+
+subscriberAddress
+
+creatorAddress
+
+tierId
+
+nextPaymentTime (e.g., now + 30 days)
+
+isActive = true
+
+🧠 After this, Autonomous Smart Contract will:
+
+Charge funds every 30 days
+
+If user has no balance → auto-cancel subscription
+
+4. User Dashboard
+
+Route: /dashboard/user
+
+Tabs inside:
+
+/dashboard/user/overview – active subscriptions, trial status
+
+/dashboard/user/subscriptions – list of creators subscribed
+
+/dashboard/user/billing – payments history (on-chain)
+
+/dashboard/user/settings – profile info
+
+Features user gets:
+
+See:
+
+Active subscriptions
+
+Next billing date
+
+How much they’ve paid in total
+
+Cancel a subscription → calls:
+
+cancelSubscription(subscriptionId)
+
+
+See trial progress:
+
+“Trial remaining: 3 days”
+
+After trial ends, UI shows “Upgrade to continue watching premium content”
+
+🎨 CREATOR POV – Dashboard & Features
+1. Becoming a Creator
+
+Routes:
+
+/creator/onboard → Apply as creator
+
+/dashboard/creator → Creator dashboard
+
+Flow:
+
+User clicks “Become a Creator”
+
+Fills:
+
+Creator name
+
+Username/handle
+
+Bio
+
+Category
+
+Smart contract registerCreator():
+
+Marks isCreator = true
+
+Creates CreatorProfile on-chain
+
+2. Creator Dashboard Layout
+
+Main route: /dashboard/creator
+Sub-routes:
+
+/dashboard/creator/overview
+
+Earnings summary
+
+Active subscribers count
+
+Monthly revenue
+
+/dashboard/creator/content
+
+Upload/manage posts
+
+/dashboard/creator/subscribers
+
+List of subscribers
+
+/dashboard/creator/tiers
+
+Define subscription plans
+
+/dashboard/creator/payouts
+
+Claim earnings, see payout history
+
+/dashboard/creator/settings
+
+Profile update, links, etc.
+
+3. Creator Features in Detail
+a) Manage Tiers
+
+On /dashboard/creator/tiers:
+
+Add Tier:
+
+Name (e.g., “Supporter”, “Pro”, “VIP”)
+
+Price (MASSA per month)
+
+Benefits text
+
+Optional: hasFreeTrialAccess (yes/no)
+
+Calls smart contract:
+
+createTier(creatorId, name, price, metadataURI)
+
+
+Stored on-chain: Tier{ id, creatorId, price, perksURI }
+
+b) Upload Content
+
+On /dashboard/creator/content:
+
+Form fields:
+
+Title
+
+Description
+
+Type: post / video / audio / file
+
+Visibility:
+
+FREE_TRIAL (only up to 3 per creator)
+
+SUBSCRIBERS_ONLY
+
+Attached media → stored on IPFS or other decentralized storage
+
+Flow:
+
+Frontend uploads file → IPFS → gets contentCID
+
+Smart contract call:
+
+createContent(creatorId, tierIdRequired, visibility, contentCID)
+
+
+Rules:
+
+If visibility = FREE_TRIAL:
+
+Check if creator already has 3 free trial contents:
+
+If yes → reject
+
+If no → allow
+
+c) Earnings & Payouts
+
+On /dashboard/creator/payouts:
+
+Smart contract accumulates all subscription payments in CreatorVault.
+
+Creator can click “Withdraw”:
+
+Calls withdrawEarnings() → sends MASSA to creator wallet
+
+Show:
+
+totalEarned
+
+availableToWithdraw
+
+withdrawalHistory
+
+🧠 HOW MASSA SMART CONTRACTS & ASC WORK HERE
+
+We’ll design 3 main contracts:
+
+UserRegistry – profiles (user/creator)
+
+SubscriptionManager – tiers, subscriptions, trials, billing
+
+ContentRegistry – content metadata & access control
+
+And Autonomous logic (ASC) to run billing & cleanups.
+
+1️⃣ UserRegistry (simple)
+
+Stores:
+
+User {
+  address: string;
+  isCreator: bool;
+  isNew: bool;
+  trialEndTimestamp: u64; // block time + 7 days
+}
+
+
+On signup:
+
+isNew = true
+
+trialEndTimestamp = now + 7 days
+
+2️⃣ SubscriptionManager
+
+Handles:
+
+Creating tiers
+
+Managing subscriptions
+
+Running periodic billing
+
+Data:
+
+CreatorTier {
+  id: u64;
+  creator: string;
+  pricePerMonth: u64;
+  metadataURI: string;
+}
+
+Subscription {
+  id: u64;
+  subscriber: string;
+  creator: string;
+  tierId: u64;
+  isActive: bool;
+  nextPaymentTime: u64;
+}
+
+🔁 Autonomous Billing (Magic of Massa)
+
+We use deferred calls / ASC like:
+
+scheduleBilling() – called automatically every X blocks.
+
+Inside scheduleBilling():
+
+Loop over subscriptions
+
+If now >= nextPaymentTime:
+
+Try to charge subscriber:
+
+If subscriber sent funds / has deposit balance:
+
+Transfer MASSA to creator vault
+
+Update nextPaymentTime = now + 30 days
+
+Else:
+
+Set isActive = false (auto-cancel)
+
+No cron jobs. No bot.
+Pure smart contract logic running autonomously.
+
+3️⃣ ContentRegistry
+
+Stores:
+
+Content {
+  id: u64;
+  creator: string;
+  tierIdRequired: u64 | 0; // 0 if free trial
+  visibility: "FREE_TRIAL" | "SUBSCRIBERS_ONLY";
+  contentCID: string; // IPFS hash
+}
+
+
+When frontend loads /content/:id:
+
+Calls canViewContent(userAddress, contentId) on-chain:
+
+If visibility == FREE_TRIAL → allow
+
+Else if user has active subscription to this creator & tier → allow
+
+Else → deny
+
+Then frontend:
+
+If canView = true → fetch from IPFS & show
+
+If false → show “Subscribe to unlock”
+
+🏗 APP ARCHITECTURE (High Level)
+Frontend (DeWeb)
+
+Framework: React / Next.js / Vite + React
+
+Hosted fully on Massa DeWeb
+
+Talks to smart contracts via Massa SDK
+
+Main routes:
+
+/ → Landing
+
+/auth/login / /auth/signup
+
+/explore
+
+/creator/:handle
+
+/content/:id
+
+/dashboard/user/*
+
+/dashboard/creator/*
+
+Backend
+
+❌ No traditional backend required.
+✅ All core logic lives in smart contracts.
+
+You might optionally add:
+
+An indexer / small off-chain service to speed up searches (/explore), but not required for the hackathon demo.
+
+Smart Contracts (on Massa)
+
+Language: AssemblyScript (via Massa Ready template)
+
+Key features:
+
+Autonomous billing
+
+On-chain access control
+
+Trials & roles
+
+DeWeb integration (storing URLs, CIDs)
+
+🔄 COMPLETE USER WORKFLOW SUMMARY
+New user:
+
+Visit /
+
+Connect wallet
+
+Account created in UserRegistry with 7-day trial
+
+Browse /explore
+
+Open creator/:handle, watch free + trial content
+
+After trial or anytime:
+
+Click Subscribe → pay → SubscriptionManager stores sub
+
+Periodic billing handled by ASC
+
+They manage subs in /dashboard/user
+
+New creator:
+
+Normal user → click “Become a Creator”
+
+Fills profile → registerCreator()
+
+Creates tiers in /dashboard/creator/tiers
+
+Uploads content in /dashboard/creator/content
+
+Marks 3 as FREE_TRIAL
+
+Others = SUBSCRIBERS_ONLY
+
+Subscribers join automatically via UI
+
+Creator sees numbers & earnings in dashboard
+
+Withdraw earnings via /dashboard/creator/payouts
