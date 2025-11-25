@@ -90,8 +90,8 @@ export default function CreatorProfile() {
 
     try {
       const args = new Args();
-      args.add(creator?.address || '');
-      args.add(tierId);
+      args.addString(creator?.address || '');
+      args.addU64(BigInt(tierId));
       await callContract('subscribe', args);
       toast.success('Subscribed successfully!');
       setSubscribed(true);

@@ -40,9 +40,9 @@ export default function Signup() {
     setLoading(true);
     try {
       const args = new Args();
-      args.add(address);
-      args.add(formData.username);
-      args.add(formData.bio);
+      args.addString(address);
+      args.addString(formData.username);
+      args.addString(formData.bio);
 
       await callContract('registerUser', args);
       toast.success('Account created! Starting your 7-day trial...');

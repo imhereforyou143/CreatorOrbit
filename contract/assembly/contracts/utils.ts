@@ -36,3 +36,7 @@ export function hasBytes(key: string): bool {
   return Storage.has<StaticArray<u8>>(storageKey(key));
 }
 
+export function deleteBytes(key: string): void {
+  Storage.del<StaticArray<u8>>(storageKey(key));
+}
+

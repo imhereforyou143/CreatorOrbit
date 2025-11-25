@@ -32,12 +32,12 @@ export default function CreatorOnboard() {
     setLoading(true);
     try {
       const args = new Args();
-      args.add(address);
-      args.add(formData.name);
-      args.add(formData.handle);
-      args.add(formData.bio);
-      args.add(formData.category);
-      args.add(formData.metadataURI || '');
+      args.addString(address);
+      args.addString(formData.name);
+      args.addString(formData.handle);
+      args.addString(formData.bio);
+      args.addString(formData.category);
+      args.addString(formData.metadataURI || '');
 
       await callContract('registerCreator', args);
       toast.success('Creator account created!');

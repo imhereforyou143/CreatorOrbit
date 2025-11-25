@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { WalletProvider } from '@massalabs/wallet-provider';
+import { WalletProvider } from './context/WalletContext';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import Landing from './pages/Landing';

@@ -26,7 +26,7 @@ export default function UserSettings() {
     
     try {
       const args = new Args();
-      args.add(address);
+      args.addString(address);
       const userData = await readContract('getUser', args);
       // Deserialize and set form data
       // Mock for now
@@ -46,9 +46,9 @@ export default function UserSettings() {
     setLoading(true);
     try {
       const args = new Args();
-      args.add(address);
-      args.add(formData.username);
-      args.add(formData.bio);
+      args.addString(address);
+      args.addString(formData.username);
+      args.addString(formData.bio);
       await callContract('updateUserProfile', args);
       toast.success('Profile updated!');
     } catch (error) {

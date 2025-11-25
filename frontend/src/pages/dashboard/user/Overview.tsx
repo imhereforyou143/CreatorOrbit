@@ -25,7 +25,7 @@ export default function UserOverview() {
       // Check trial status
       if (address) {
         const trialArgs = new Args();
-        trialArgs.add(address);
+        trialArgs.addString(address);
         const trialData = await readContract('isInTrial', trialArgs);
         // Deserialize and set trial info
         setTrialInfo({

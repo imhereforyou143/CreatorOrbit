@@ -39,7 +39,7 @@ export default function UserSubscriptions() {
   const handleCancel = async (creatorAddress: string) => {
     try {
       const args = new Args();
-      args.add(creatorAddress);
+      args.addString(creatorAddress);
       await callContract('cancelSubscription', args);
       toast.success('Subscription cancelled');
       loadSubscriptions();

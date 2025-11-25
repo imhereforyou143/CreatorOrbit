@@ -29,7 +29,7 @@ export default function CreatorTiers() {
     
     try {
       const args = new Args();
-      args.add(address);
+      args.addString(address);
       const tiersData = await readContract('getCreatorTiers', args);
       // Deserialize and set
       // Mock for now
@@ -50,10 +50,10 @@ export default function CreatorTiers() {
     try {
       const priceInNano = BigInt(parseFloat(formData.pricePerMonth) * 1e9);
       const args = new Args();
-      args.add(address);
-      args.add(formData.name);
-      args.add(priceInNano);
-      args.add(formData.metadataURI || '');
+      args.addString(address);
+      args.addString(formData.name);
+      args.addU64(priceInNano);
+      args.addString(formData.metadataURI || '');
 
       await callContract('createTier', args);
       toast.success('Tier created!');

@@ -1,12 +1,12 @@
 import { Context, generateEvent, Storage } from '@massalabs/massa-as-sdk';
 import { Args } from '@massalabs/as-types';
 import {
-  storageKey,
   writeU64,
   readU64,
   writeBytes,
   readBytes,
   hasBytes,
+  deleteBytes,
 } from './utils';
 
 // Storage keys
@@ -104,18 +104,14 @@ export function createContent(binaryArgs: StaticArray<u8>): void {
   // Check free trial limit (max 3 per creator)
   if (visibility == Visibility.FREE_TRIAL) {
     const freeTrialCountKey = FREE_TRIAL_COUNT_PREFIX + creator;
-    const currentCount = Storage.has(freeTrialCountKey)
-      ? parseInt(bytesToString(Storage.get(freeTrialCountKey)))
-      : 0;
+    const currentCount = readU64(freeTrialCountKey);
     assert(currentCount < 3, 'Maximum 3 free trial contents allowed');
     
-    Storage.set(freeTrialCountKey, stringToBytes((currentCount + 1).toString()));
+    writeU64(freeTrialCountKey, currentCount + 1);
   }
 
   // Get next content ID
-  const count = Storage.has(CONTENT_COUNT_KEY)
-    ? parseInt(bytesToString(Storage.get(CONTENT_COUNT_KEY)))
-    : 0;
+  const count = readU64(CONTENT_COUNT_KEY);
 
   const content = new Content(
     u64(count),
@@ -130,20 +126,20 @@ export function createContent(binaryArgs: StaticArray<u8>): void {
   );
 
   const contentKey = CONTENT_PREFIX + count.toString();
-  Storage.set(contentKey, content.serialize());
+  writeBytes(contentKey, content.serialize());
 
   // Store in creator's content list
   const creatorContentKey = CREATOR_CONTENT_PREFIX + creator;
-  const creatorContentList = Storage.has(creatorContentKey)
-    ? bytesToString(Storage.get(creatorContentKey))
+  const creatorContentList = Storage.has<string>(creatorContentKey)
+    ? Storage.get<string>(creatorContentKey)
     : '';
   const newList = creatorContentList == '' 
     ? count.toString() 
     : creatorContentList + ',' + count.toString();
-  Storage.set(creatorContentKey, stringToBytes(newList));
+  Storage.set<string>(creatorContentKey, newList);
 
   // Increment content count
-  Storage.set(CONTENT_COUNT_KEY, stringToBytes((count + 1).toString()));
+  writeU64(CONTENT_COUNT_KEY, count + 1);
 
   generateEvent(`Content created: ${count} by ${creator}`);
 }
@@ -157,9 +153,9 @@ export function getContent(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const contentId = args.nextU64().expect('ContentId is required');
 
   const contentKey = CONTENT_PREFIX + contentId.toString();
-  assert(Storage.has(contentKey), 'Content not found');
+  assert(hasBytes(contentKey), 'Content not found');
 
-  return Storage.get(contentKey);
+  return readBytes(contentKey);
 }
 
 /**
@@ -171,13 +167,13 @@ export function getCreatorContent(binaryArgs: StaticArray<u8>): StaticArray<u8> 
   const creator = args.nextString().expect('Creator is required');
 
   const creatorContentKey = CREATOR_CONTENT_PREFIX + creator;
-  if (!Storage.has(creatorContentKey)) {
+  if (!Storage.has<string>(creatorContentKey)) {
     const result = new Args();
     result.add(0);
     return result.serialize();
   }
 
-  const contentListStr = bytesToString(Storage.get(creatorContentKey));
+  const contentListStr = Storage.get<string>(creatorContentKey);
   const contentIds = contentListStr.split(',');
   
   const result = new Args();
@@ -187,8 +183,8 @@ export function getCreatorContent(binaryArgs: StaticArray<u8>): StaticArray<u8> 
     const contentId = contentIds[i];
     if (contentId != '') {
       const contentKey = CONTENT_PREFIX + contentId;
-      if (Storage.has(contentKey)) {
-        result.add(Storage.get(contentKey));
+      if (hasBytes(contentKey)) {
+        result.add(readBytes(contentKey));
       }
     }
   }
@@ -206,9 +202,9 @@ export function canViewContent(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   const contentId = args.nextU64().expect('ContentId is required');
 
   const contentKey = CONTENT_PREFIX + contentId.toString();
-  assert(Storage.has(contentKey), 'Content not found');
+  assert(hasBytes(contentKey), 'Content not found');
 
-  const content = Content.deserialize(Storage.get(contentKey));
+  const content = Content.deserialize(readBytes(contentKey));
 
   // Free trial content is always viewable
   if (content.visibility == Visibility.FREE_TRIAL) {
@@ -221,7 +217,7 @@ export function canViewContent(binaryArgs: StaticArray<u8>): StaticArray<u8> {
   // Note: This is a simplified check. In production, you'd properly call isSubscribed
   // For now, we'll check if there's an active subscription
   const subKey = 'sub_' + userAddress + '_' + content.creator;
-  if (Storage.has(subKey)) {
+  if (hasBytes(subKey)) {
     // In a real implementation, you'd deserialize and check isActive
     const result = new Args();
     result.add(true);
@@ -242,9 +238,7 @@ export function getFreeTrialCount(binaryArgs: StaticArray<u8>): StaticArray<u8> 
   const creator = args.nextString().expect('Creator is required');
 
   const freeTrialCountKey = FREE_TRIAL_COUNT_PREFIX + creator;
-  const count = Storage.has(freeTrialCountKey)
-    ? u64(parseInt(bytesToString(Storage.get(freeTrialCountKey))))
-    : u64(0);
+  const count = readU64(freeTrialCountKey);
 
   const result = new Args();
   result.add(count);
@@ -260,32 +254,30 @@ export function deleteContent(binaryArgs: StaticArray<u8>): void {
   const contentId = args.nextU64().expect('ContentId is required');
 
   const contentKey = CONTENT_PREFIX + contentId.toString();
-  assert(Storage.has(contentKey), 'Content not found');
+  assert(hasBytes(contentKey), 'Content not found');
 
-  const content = Content.deserialize(Storage.get(contentKey));
+  const content = Content.deserialize(readBytes(contentKey));
   assert(Context.caller().toString() === content.creator, 'Unauthorized');
 
   // If it was free trial, decrement count
   if (content.visibility == Visibility.FREE_TRIAL) {
     const freeTrialCountKey = FREE_TRIAL_COUNT_PREFIX + content.creator;
-    if (Storage.has(freeTrialCountKey)) {
-      const currentCount = parseInt(bytesToString(Storage.get(freeTrialCountKey)));
-      if (currentCount > 0) {
-        Storage.set(freeTrialCountKey, stringToBytes((currentCount - 1).toString()));
-      }
+    const currentCount = readU64(freeTrialCountKey);
+    if (currentCount > 0) {
+      writeU64(freeTrialCountKey, currentCount - 1);
     }
   }
 
   // Remove from creator's content list
   const creatorContentKey = CREATOR_CONTENT_PREFIX + content.creator;
-  if (Storage.has(creatorContentKey)) {
-    const contentListStr = bytesToString(Storage.get(creatorContentKey));
+  if (Storage.has<string>(creatorContentKey)) {
+    const contentListStr = Storage.get<string>(creatorContentKey);
     const contentIds = contentListStr.split(',');
     const newIds = contentIds.filter(id => id != contentId.toString());
-    Storage.set(creatorContentKey, stringToBytes(newIds.join(',')));
+    Storage.set<string>(creatorContentKey, newIds.join(','));
   }
 
-  Storage.delete(contentKey);
+  deleteBytes(contentKey);
   generateEvent(`Content deleted: ${contentId} by ${content.creator}`);
 }
 

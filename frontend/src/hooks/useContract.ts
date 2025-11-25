@@ -2,48 +2,62 @@ import { useState } from 'react';
 import { JsonRPCClient, Args } from '@massalabs/massa-web3';
 import { useWallet } from './useWallet';
 
-// Contract address - update after deployment
-const CONTRACT_ADDRESS = (import.meta as any).env?.VITE_CONTRACT_ADDRESS || 'AS121byc9dBwjbeREk4rzUZisFyfMkdZ1Uhtcnm6n6s5hnCX6fsHc';
+const CONTRACT_ADDRESS =
+  (import.meta as any).env?.VITE_CONTRACT_ADDRESS ||
+  'AS121byc9dBwjbeREk4rzUZisFyfMkdZ1Uhtcnm6n6s5hnCX6fsHc';
+
+const DEFAULT_MAX_GAS = BigInt(5_000_000);
 
 export function useContract() {
-  const { client, address } = useWallet();
+  const { client, account, address } = useWallet();
   const [contractAddress] = useState(CONTRACT_ADDRESS);
 
-  const callContract = async (functionName: string, args: Args): Promise<Uint8Array | null> => {
-    if (!client || !address) return null;
-    
+  const readContract = async (
+    functionName: string,
+    args: Args,
+    caller?: string,
+  ): Promise<Uint8Array | null> => {
+    if (!client) return null;
+
     try {
-      // This is a simplified version - in production you'd use proper contract calling
-      // For Massa, you'd use the client to call smart contracts
-      const result = await client.smartContracts().callSmartContract({
-        targetAddress: contractAddress,
-        functionName,
+      const result = await client.executeReadOnlyCall({
+        target: contractAddress,
+        func: functionName,
         parameter: args.serialize(),
-        maxGas: BigInt(1000000),
-        coins: BigInt(0),
+        caller: caller ?? address ?? contractAddress,
+        maxGas: DEFAULT_MAX_GAS,
       });
-      
-      return result.returnValue;
+
+      return result.value;
     } catch (error) {
-      console.error('Contract call error:', error);
+      console.error('Contract read error:', error);
       return null;
     }
   };
 
-  const readContract = async (functionName: string, args: Args): Promise<Uint8Array | null> => {
-    if (!client) return null;
-    
+  const callContract = async (
+    functionName: string,
+    args: Args,
+    coins: bigint = 0n,
+    maxGas: bigint = DEFAULT_MAX_GAS,
+    fee: bigint = 0n,
+  ) => {
+    if (!account) {
+      throw new Error('Wallet not connected');
+    }
+
     try {
-      const result = await client.smartContracts().readSmartContract({
-        targetAddress: contractAddress,
+      return await account.callSC(
+        contractAddress,
         functionName,
-        parameter: args.serialize(),
-      });
-      
-      return result.returnValue;
+        args.serialize(),
+        coins,
+        fee,
+        maxGas,
+      );
     } catch (error) {
-      console.error('Contract read error:', error);
-      return null;
+      console.error('Contract execution error:', error);
+      throw error;
     }
   };
 
@@ -51,7 +65,7 @@ export function useContract() {
     contractAddress,
     callContract,
     readContract,
-    client,
+    client: client ?? JsonRPCClient.buildnet(),
     address,
   };
 }
