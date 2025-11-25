@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Users, Calendar, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useContract } from '../../../hooks/useContract';
 import { useWallet } from '../../../hooks/useWallet';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function CreatorSubscribers() {
   const { address } = useWallet();
-  const { readContract } = useContract();
   const [subscribers, setSubscribers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -43,7 +43,7 @@ cd frontend
 cp .env.example .env
 ```
 
-2. **Update `.env`** with your contract address (current buildnet deployment: `AS1Q7xPV7EjGVLRw1JAeJo52JYUaJfhDgf7Yk4EMMZVT4k6F6jcZ`):
+2. **Update `.env`** with your contract address (current buildnet deployment: `AS1tnWEMaa8ri3PZm6js3pN1cbB1E2aZURsa9P2vRjY8jZp322qa`):
 ```env
 VITE_CONTRACT_ADDRESS=AS_your_contract_address_here
 ```

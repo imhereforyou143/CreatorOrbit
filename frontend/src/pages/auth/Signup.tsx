@@ -1,32 +1,39 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useWallet } from '../../hooks/useWallet';
 import { useContract } from '../../hooks/useContract';
-import { Sparkles, Wallet, User } from 'lucide-react';
+import { Sparkles, Wallet, User, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { Args } from '@massalabs/massa-web3';
 
 export default function Signup() {
-  const { connect, connected, address } = useWallet();
+  const { connect, connected, address, wallets, refreshWallets, discoveringWallets } = useWallet();
   const { callContract } = useContract();
   const navigate = useNavigate();
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     bio: '',
   });
 
-  const handleConnect = async () => {
-    setLoading(true);
+  useEffect(() => {
+    refreshWallets().catch(() => {
+      /* handled inside context */
+    });
+  }, [refreshWallets]);
+
+  const handleConnect = async (providerName?: string) => {
+    setLoadingProvider(providerName ?? 'auto');
     try {
-      await connect();
+      await connect(providerName);
       toast.success('Wallet connected!');
     } catch (error) {
       toast.error('Failed to connect wallet');
       console.error(error);
     } finally {
-      setLoading(false);
+      setLoadingProvider(null);
     }
   };
 
@@ -69,14 +76,44 @@ export default function Signup() {
         </div>
 
         {!connected ? (
-          <button
-            onClick={handleConnect}
-            disabled={loading}
-            className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center justify-center space-x-2 disabled:opacity-50"
-          >
-            <Wallet className="w-5 h-5" />
-            <span>{loading ? 'Connecting...' : 'Connect Wallet'}</span>
-          </button>
+          <div className="space-y-4">
+            {wallets.length ? (
+              wallets.map((wallet) => (
+                <button
+                  key={wallet.name}
+                  onClick={() => handleConnect(wallet.name)}
+                  disabled={loadingProvider !== null}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <Wallet className="w-5 h-5" />
+                  <span>
+                    {loadingProvider === wallet.name ? 'Connecting...' : `Connect ${wallet.label}`}
+                  </span>
+                </button>
+              ))
+            ) : (
+              <div className="text-center text-white/70 space-y-3">
+                <p>Launch Bearby or Massa Station, then detect wallets.</p>
+                <button
+                  onClick={() => handleConnect()}
+                  disabled={loadingProvider !== null}
+                  className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <Wallet className="w-5 h-5" />
+                  <span>{loadingProvider ? 'Connecting...' : 'Auto Connect'}</span>
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => refreshWallets()}
+              disabled={discoveringWallets}
+              className="w-full px-6 py-3 glass rounded-lg font-semibold flex items-center justify-center space-x-2 disabled:opacity-60"
+            >
+              <RefreshCw className={`w-4 h-4 ${discoveringWallets ? 'animate-spin' : ''}`} />
+              <span>{discoveringWallets ? 'Scanning wallets...' : 'Detect wallets again'}</span>
+            </button>
+          </div>
         ) : (
           <form onSubmit={handleSignup} className="space-y-4">
             <div>

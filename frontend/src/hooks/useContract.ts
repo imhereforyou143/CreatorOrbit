@@ -4,7 +4,7 @@ import { useWallet } from './useWallet';
 
 const CONTRACT_ADDRESS =
   (import.meta as any).env?.VITE_CONTRACT_ADDRESS ||
-  'AS1Q7xPV7EjGVLRw1JAeJo52JYUaJfhDgf7Yk4EMMZVT4k6F6jcZ';
+  'AS1tnWEMaa8ri3PZm6js3pN1cbB1E2aZURsa9P2vRjY8jZp322qa';
 
 const DEFAULT_MAX_GAS = BigInt(5_000_000);
 

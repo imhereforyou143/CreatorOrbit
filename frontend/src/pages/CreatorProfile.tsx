@@ -21,6 +21,9 @@ import {
   parseCreator,
   parseFreeTrialCount,
   parseTierList,
+  type DecodedCreator,
+  type DecodedTier,
+  type DecodedContent,
 } from '../utils/massa';
 import {
   addCreatorFollower,
@@ -30,6 +33,138 @@ import {
   removeCreatorFollower,
   removeUserSubscription,
 } from '../utils/localState';
+
+type DemoSnapshot = {
+  creator: DecodedCreator;
+  tiers: DecodedTier[];
+  contents: DecodedContent[];
+  freeTrialCount: number;
+};
+
+//  ------THESE ARE TEH DUMMY CREATOR JUST FOR THE TESTING-----------
+
+
+const DEMO_CREATORS: Record<string, DemoSnapshot> = {
+  luna: {
+    creator: {
+      address: 'AS111demoLuna000000000000000000000000000000000000',
+      name: 'Luna Nova',
+      handle: 'luna',
+      bio: 'Cinematic storyteller blending volumetric video with immersive audio drops.',
+      category: 'Cinematic Arts',
+      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
+      metadataURI: 'ipfs://luna',
+    },
+    tiers: [
+      {
+        id: 1n,
+        creator: 'AS111demoLuna000000000000000000000000000000000000',
+        name: 'Nebula Pass',
+        pricePerMonth: BigInt(2 * 1_000_000_000),
+        metadataURI: 'ipfs://tier-nebula',
+        createdAt: Date.now() - 1000 * 60 * 60 * 24 * 14,
+      },
+      {
+        id: 2n,
+        creator: 'AS111demoLuna000000000000000000000000000000000000',
+        name: 'Supernova Key',
+        pricePerMonth: BigInt(5 * 1_000_000_000),
+        metadataURI: 'ipfs://tier-supernova',
+        createdAt: Date.now() - 1000 * 60 * 60 * 24 * 10,
+      },
+    ],
+    freeTrialCount: 2,
+    contents: [
+      {
+        id: 1001n,
+        creator: 'AS111demoLuna000000000000000000000000000000000000',
+        tierIdRequired: 0n,
+        visibility: 0,
+        contentCID: 'ipfs://luna-free-1',
+        title: 'Aurora Sketchbook',
+        description: 'Timelapsed storyboard showing how the Aurora pilot episode is composed.',
+        contentType: 'image',
+        createdAt: Date.now() - 1000 * 60 * 60 * 6,
+      },
+      {
+        id: 1002n,
+        creator: 'AS111demoLuna000000000000000000000000000000000000',
+        tierIdRequired: 1n,
+        visibility: 1,
+        contentCID: 'ipfs://luna-premium-1',
+        title: 'Volumetric Scene Pack',
+        description: 'Downloadable volumetric captures + color LUTs for episode 3.',
+        contentType: 'zip',
+        createdAt: Date.now() - 1000 * 60 * 60 * 4,
+      },
+      {
+        id: 1003n,
+        creator: 'AS111demoLuna000000000000000000000000000000000000',
+        tierIdRequired: 2n,
+        visibility: 1,
+        contentCID: 'ipfs://luna-premium-2',
+        title: 'Director’s Commentary Stream',
+        description: 'Live session with behind-the-scenes breakdown and lighting Q&A.',
+        contentType: 'stream',
+        createdAt: Date.now() - 1000 * 60 * 60 * 2,
+      },
+    ],
+  },
+  orbitchef: {
+    creator: {
+      address: 'AS111demoChef00000000000000000000000000000000000',
+      name: 'Orbit Chef',
+      handle: 'orbitchef',
+      bio: 'Zero-gravity food scientist sharing XR cooking classes & MAS-powered meal drops.',
+      category: 'Food & IRL',
+      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 45,
+      metadataURI: 'ipfs://chef',
+    },
+    tiers: [
+      {
+        id: 1n,
+        creator: 'AS111demoChef00000000000000000000000000000000000',
+        name: 'Galley Pass',
+        pricePerMonth: BigInt(1 * 1_000_000_000),
+        metadataURI: 'ipfs://galley',
+        createdAt: Date.now() - 1000 * 60 * 60 * 24 * 20,
+      },
+      {
+        id: 2n,
+        creator: 'AS111demoChef00000000000000000000000000000000000',
+        name: 'Captain’s Table',
+        pricePerMonth: BigInt(3 * 1_000_000_000),
+        metadataURI: 'ipfs://captain',
+        createdAt: Date.now() - 1000 * 60 * 60 * 24 * 5,
+      },
+    ],
+    freeTrialCount: 1,
+    contents: [
+      {
+        id: 2001n,
+        creator: 'AS111demoChef00000000000000000000000000000000000',
+        tierIdRequired: 0n,
+        visibility: 0,
+        contentCID: 'ipfs://chef-free-1',
+        title: 'Zero-G Spices 101',
+        description: 'How magnetic spice pods keep flavor locked during parabolic flights.',
+        contentType: 'video',
+        createdAt: Date.now() - 1000 * 60 * 60 * 8,
+      },
+      {
+        id: 2002n,
+        creator: 'AS111demoChef00000000000000000000000000000000000',
+        tierIdRequired: 1n,
+        visibility: 1,
+        contentCID: 'ipfs://chef-premium-1',
+        title: 'Orbital Bento Templates',
+        description: 'Downloadable CAD templates for anti-gravity bento plating.',
+        contentType: 'cad',
+        createdAt: Date.now() - 1000 * 60 * 60 * 3,
+      },
+    ],
+  },
+};
 
 export default function CreatorProfile() {
   const { handle } = useParams();
@@ -61,6 +196,21 @@ export default function CreatorProfile() {
     }
   }, [handle, address]);
 
+  const applyFallbackData = (identifier: string): boolean => {
+    const snapshot = DEMO_CREATORS[identifier.toLowerCase()];
+    if (!snapshot) {
+      return false;
+    }
+
+    setCreator(snapshot.creator);
+    setTiers(snapshot.tiers);
+    setContents(snapshot.contents);
+    setFreeTrialCount(snapshot.freeTrialCount);
+    setIsSubscribed(false);
+    setError('');
+    return true;
+  };
+
   const loadCreatorData = async (identifier: string) => {
     setLoading(true);
     setError('');
@@ -71,9 +221,11 @@ export default function CreatorProfile() {
       const creatorData = await readContract('getCreator', creatorArgs);
 
       if (!creatorData) {
-        setError('Creator not found on-chain. Ask them to onboard first!');
-        setCreator(null);
-        setContents([]);
+        if (!applyFallbackData(identifier)) {
+          setError('Creator not found on-chain. Ask them to onboard first!');
+          setCreator(null);
+          setContents([]);
+        }
         return;
       }
 
@@ -107,7 +259,9 @@ export default function CreatorProfile() {
       }
     } catch (err) {
       console.error(err);
-      setError('Unable to load creator profile from the blockchain.');
+      if (!applyFallbackData(identifier)) {
+        setError('Unable to load creator profile from the blockchain.');
+      }
     } finally {
       setLoading(false);
     }
@@ -132,7 +286,7 @@ export default function CreatorProfile() {
       await callContract('subscribe', args, tier.pricePerMonth);
       addUserSubscription(address, creator.handle);
       addCreatorFollower(creator.address, address);
-      toast.success("Welcome to 's  tier!");
+      toast.success(`Welcome to ${creator.name}'s ${tier.name} tier!`);
       setIsSubscribed(true);
       setLocalVersion((v) => v + 1);
     } catch (err) {

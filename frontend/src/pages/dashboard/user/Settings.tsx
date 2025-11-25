@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Save, User } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useWallet } from '../../../hooks/useWallet';
-import { useContract } from '../../../hooks/useContract';
 import { Args } from '@massalabs/massa-web3';
 import toast from 'react-hot-toast';
+import { useWallet } from '../../../hooks/useWallet';
+import { useContract } from '../../../hooks/useContract';
+import { parseUser } from '../../../utils/massa';
 
 export default function UserSettings() {
   const { address } = useWallet();
@@ -28,12 +29,13 @@ export default function UserSettings() {
       const args = new Args();
       args.addString(address);
       const userData = await readContract('getUser', args);
-      // Deserialize and set form data
-      // Mock for now
-      setFormData({
-        username: 'user123',
-        bio: 'Bio placeholder',
-      });
+      if (userData) {
+        const decoded = parseUser(userData);
+        setFormData({
+          username: decoded.username,
+          bio: decoded.bio,
+        });
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
     }

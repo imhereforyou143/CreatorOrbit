@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, CreditCard } from 'lucide-react';
+import { Plus, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useContract } from '../../../hooks/useContract';
 import { useWallet } from '../../../hooks/useWallet';
 import { Args } from '@massalabs/massa-web3';
 import toast from 'react-hot-toast';
+import { parseTierList } from '../../../utils/massa';
 
 export default function CreatorTiers() {
   const { address } = useWallet();
@@ -31,12 +32,7 @@ export default function CreatorTiers() {
       const args = new Args();
       args.addString(address);
       const tiersData = await readContract('getCreatorTiers', args);
-      // Deserialize and set
-      // Mock for now
-      setTiers([
-        { id: 0, name: 'Supporter', pricePerMonth: BigInt(5000000000), metadataURI: '' },
-        { id: 1, name: 'Super Fan', pricePerMonth: BigInt(15000000000), metadataURI: '' },
-      ]);
+      setTiers(parseTierList(tiersData));
     } catch (error) {
       console.error('Error loading tiers:', error);
     }

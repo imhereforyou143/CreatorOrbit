@@ -1,8 +1,18 @@
 # CreatorOrbit
 
+![CreatorOrbit Logo](frontend/src/assets/logo.png)
+
 **Autonomous subscriptions for unstoppable creators.**
 
+CreatorOrbit lets fans discover, trial, and subscribe to creators through Massa’s autonomous smart contracts. Billing, access control, and payouts are enforced entirely on-chain, while the UI lives on Massa DeWeb for a fully decentralized experience. Wallets connect through the official Massa Station desktop wallet or the Bearby browser extension so builders can stay on buildnet funding without spending real MAS.
+
 Built on Massa blockchain with DeWeb hosting. No bots, no cron jobs, no backend server needed for billing.
+
+## About CreatorOrbit
+
+- **What it does** – A multi-tier subscription marketplace where creators upload IPFS content, flag free-trial drops, and manage subscribers. Users get a 7‑day trial, explore 3D-themed dashboards, and unlock content per tier.
+- **Why Massa** – Autonomous Smart Contracts schedule billing, vault earnings, and gate content with zero backend timers. Massa Station + Bearby wallets give native buildnet support, and DeWeb hosting keeps the frontend decentralized.
+- **Who it helps** – Indie creators who want self-sovereign memberships, and Web3 communities that need verifiable access passes without centralized paywalls.
 
 ## Features
 
@@ -58,7 +68,7 @@ CreatorOrbit/
 
 ## Getting Started
 
-> **Deployed Contract**: `AS1Q7xPV7EjGVLRw1JAeJo52JYUaJfhDgf7Yk4EMMZVT4k6F6jcZ` on Massa buildnet.
+> **Deployed Contract**: `AS1tnWEMaa8ri3PZm6js3pN1cbB1E2aZURsa9P2vRjY8jZp322qa` on Massa buildnet.
 
 ### Prerequisites
 

@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Filter, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useContract } from '../hooks/useContract';
-import { Args } from '@massalabs/massa-web3';
 
 interface Creator {
   address: string;
@@ -14,7 +12,6 @@ interface Creator {
 }
 
 export default function Explore() {
-  const { readContract } = useContract();
   const [creators, setCreators] = useState<Creator[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
